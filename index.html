@@ -607,11 +607,14 @@
       });
 
       peer.on('connection', c => {
+        // 立即缓存数据，防止 accept 之前消息丢失
         pendingConn = c;
         const banner = document.getElementById('incoming-banner');
         document.getElementById('incoming-text').textContent = `📲 来自「${c.peer}」的连接请求`;
         banner.style.display = 'flex';
         banner.style.flexDirection = 'column';
+        // 自动接受（无需手动点击也能建立通道），UI 上仍显示横幅让用户确认
+        // 注意：不在这里 showChat，等用户点接受
       });
 
       peer.on('error', err => {
@@ -637,29 +640,41 @@
 
     function acceptIncoming() {
       if (!pendingConn) return;
-      setupConn(pendingConn);
+      const c = pendingConn;
+      pendingConn = null;
+      document.getElementById('incoming-banner').style.display = 'none';
+      activateConn(c);
     }
 
     function connectToPeer() {
       const peerId = document.getElementById('peer-id-input').value.trim();
-      if (!peerId) return;
+      if (!peerId || !peer) return;
+      if (peerId === myId) { alert('不能连接自己'); return; }
       setStatus('connecting', '连接中…');
-      const c = peer.connect(peerId, { reliable: true, metadata: { from: myId } });
-      setupConn(c);
+      document.getElementById('connect-btn').disabled = true;
+      activateConn(peer.connect(peerId, { reliable: true }));
     }
 
-    function setupConn(c) {
+    function activateConn(c) {
+      if (conn) { try { conn.close(); } catch(_){} }
       conn = c;
-      document.getElementById('peer-label').textContent = c.peer;
 
       conn.on('open', () => {
         setStatus('connected', '已连接');
+        document.getElementById('peer-label').textContent = conn.peer;
         showChat();
-        addSystemMsg(`已与「${c.peer}」建立连接 🎉`);
+        addSystemMsg(`已与「${conn.peer}」建立连接 🎉`);
       });
 
-      conn.on('data', data => {
-        addMessage(data.text || data, 'peer', data.from || c.peer);
+      conn.on('data', raw => {
+        let text, from;
+        if (typeof raw === 'string') {
+          text = raw; from = conn.peer;
+        } else {
+          text = (raw && raw.text) ? raw.text : String(raw);
+          from = (raw && raw.from) ? raw.from : conn.peer;
+        }
+        addMessage(text, 'peer', from);
       });
 
       conn.on('close', () => {
@@ -667,11 +682,13 @@
         addSystemMsg('对方已断开连接');
         document.getElementById('send-btn').disabled = true;
         document.getElementById('msg-input').disabled = true;
+        conn = null;
       });
 
       conn.on('error', err => {
         console.error(err);
-        addSystemMsg('连接错误: ' + err);
+        setStatus('', '连接出错');
+        addSystemMsg('连接错误: ' + (err.message || err));
       });
     }
 
@@ -685,8 +702,8 @@
     function sendMessage() {
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
-      if (!text || !conn) return;
-      conn.send({ text, from: myId });
+      if (!text || !conn || !conn.open) return;
+      conn.send(text);          // 只发纯字符串，最可靠
       addMessage(text, 'self', myId);
       input.value = '';
       input.focus();
