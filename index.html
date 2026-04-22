@@ -659,12 +659,19 @@
       if (conn) { try { conn.close(); } catch(_){} }
       conn = c;
 
-      conn.on('open', () => {
+      function onOpen() {
         setStatus('connected', '已连接');
         document.getElementById('peer-label').textContent = conn.peer;
         showChat();
         addSystemMsg(`已与「${conn.peer}」建立连接 🎉`);
-      });
+      }
+
+      // 被动方接受时 open 事件可能已触发，直接检查
+      if (c.open) {
+        onOpen();
+      } else {
+        conn.on('open', onOpen);
+      }
 
       conn.on('data', raw => {
         let text, from;
