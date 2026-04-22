@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P2P Chat</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: #2a2a3a;
+      --accent: #00ff88;
+      --accent2: #ff3a6e;
+      --text: #e8e8f0;
+      --muted: #5a5a7a;
+      --msg-self: #0d2b1e;
+      --msg-peer: #1a1a2e;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .logo span { color: var(--accent2); }
+
+    #status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      display: inline-block;
+      margin-right: 8px;
+      transition: background 0.3s;
+      box-shadow: 0 0 0 0 transparent;
+    }
+    #status-dot.connected {
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+    #status-dot.connecting { background: #ffcc00; }
+
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(0,255,136,0.5); }
+      70%  { box-shadow: 0 0 0 8px rgba(0,255,136,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,255,136,0); }
+    }
+
+    #status-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* ── Setup Panel ── */
+    #setup {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 24px;
+    }
+
+    .setup-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .setup-title em {
+      color: var(--accent);
+      font-style: normal;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .my-id-box {
+      background: #0d1f12;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      word-break: break-all;
+    }
+    .my-id-box:active { background: #0a2b16; }
+
+    .copy-hint {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-family: 'Space Mono', monospace;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    input[type="text"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    button {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      border-radius: 8px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    button:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      width: 100%;
+      letter-spacing: 0.05em;
+    }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .incoming-banner {
+      background: #1a0a1e;
+      border: 1px solid var(--accent2);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .incoming-text {
+      font-size: 0.85rem;
+      color: var(--accent2);
+      font-family: 'Space Mono', monospace;
+    }
+    .btn-accept {
+      background: var(--accent2);
+      color: #fff;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    /* ── Chat Panel ── */
+    #chat {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .peer-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      flex-shrink: 0;
+    }
+    .peer-bar strong { color: var(--accent); font-size: 0.85rem; }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg {
+      max-width: 78%;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      animation: fadeUp 0.2s ease;
+      word-break: break-word;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.self {
+      align-self: flex-end;
+      background: var(--msg-self);
+      border: 1px solid rgba(0,255,136,0.25);
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.peer {
+      align-self: flex-start;
+      background: var(--msg-peer);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-time {
+      display: block;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      margin-top: 4px;
+      text-align: right;
+    }
+
+    .msg.peer .msg-time { text-align: left; }
+
+    .system-msg {
+      align-self: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      background: rgba(42,42,58,0.5);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Input Bar ── */
+    .input-bar {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+
+    #msg-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #msg-input:focus { border-color: var(--accent); }
+    #msg-input::placeholder { color: var(--muted); }
+
+    .btn-send {
+      background: var(--accent);
+      color: #000;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Copied Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--accent);
+      color: #000;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 99;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="logo">P2P<span>CHAT</span></div>
+      <div style="display:flex;align-items:center">
+        <span id="status-dot"></span>
+        <span id="status-text">初始化中…</span>
+      </div>
+    </header>
+
+    <!-- Setup -->
+    <div id="setup">
+      <div class="setup-title">无服务器<br/><em>点对点聊天</em></div>
+
+      <div class="card">
+        <div class="card-label">你的 ID（点击复制）</div>
+        <div class="my-id-box" id="my-id" onclick="copyMyId()">生成中…</div>
+        <div class="copy-hint">把这个 ID 发给对方，让他来连你</div>
+
+        <div class="divider">或者</div>
+
+        <div class="card-label">输入对方 ID 主动连接</div>
+        <input type="text" id="peer-id-input" placeholder="粘贴对方的 ID" />
+        <button class="btn-primary" id="connect-btn" onclick="connectToPeer()" disabled>连接</button>
+
+        <div class="incoming-banner" id="incoming-banner" style="display:none">
+          <div class="incoming-text" id="incoming-text"></div>
+          <button class="btn-accept" onclick="acceptIncoming()">✓ 接受连接</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div id="chat">
+      <div class="peer-bar">
+        已连接 → <strong id="peer-label"></strong>
+      </div>
+      <div id="messages"></div>
+      <div class="input-bar">
+        <input type="text" id="msg-input" placeholder="输入消息…" onkeydown="handleKey(event)" />
+        <button class="btn-send" id="send-btn" onclick="sendMessage()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">已复制！</div>
+
+  <script>
+    let peer, conn, myId, pendingConn;
+
+    function setStatus(state, text) {
+      const dot = document.getElementById('status-dot');
+      const txt = document.getElementById('status-text');
+      dot.className = state;
+      txt.textContent = text;
+    }
+
+    function initPeer() {
+      peer = new Peer(undefined, {
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ]
+        }
+      });
+
+      setStatus('connecting', '连接服务器…');
+
+      peer.on('open', id => {
+        myId = id;
+        document.getElementById('my-id').textContent = id;
+        document.getElementById('connect-btn').disabled = false;
+        setStatus('', '等待连接');
+      });
+
+      peer.on('connection', c => {
+        pendingConn = c;
+        const banner = document.getElementById('incoming-banner');
+        document.getElementById('incoming-text').textContent = `📲 来自 ${c.peer.slice(0,8)}… 的连接请求`;
+        banner.style.display = 'flex';
+        banner.style.flexDirection = 'column';
+      });
+
+      peer.on('error', err => {
+        setStatus('', '错误: ' + err.type);
+        console.error(err);
+      });
+    }
+
+    function acceptIncoming() {
+      if (!pendingConn) return;
+      setupConn(pendingConn);
+    }
+
+    function connectToPeer() {
+      const peerId = document.getElementById('peer-id-input').value.trim();
+      if (!peerId) return;
+      setStatus('connecting', '连接中…');
+      const c = peer.connect(peerId, { reliable: true });
+      setupConn(c);
+    }
+
+    function setupConn(c) {
+      conn = c;
+      document.getElementById('peer-label').textContent = c.peer.slice(0,12) + '…';
+
+      conn.on('open', () => {
+        setStatus('connected', '已连接');
+        showChat();
+        addSystemMsg('连接已建立 🎉');
+      });
+
+      conn.on('data', data => {
+        addMessage(data, 'peer');
+      });
+
+      conn.on('close', () => {
+        setStatus('', '连接已断开');
+        addSystemMsg('对方已断开连接');
+        document.getElementById('send-btn').disabled = true;
+        document.getElementById('msg-input').disabled = true;
+      });
+
+      conn.on('error', err => {
+        console.error(err);
+        addSystemMsg('连接错误: ' + err);
+      });
+    }
+
+    function showChat() {
+      document.getElementById('setup').style.display = 'none';
+      const chatEl = document.getElementById('chat');
+      chatEl.style.display = 'flex';
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text || !conn) return;
+      conn.send(text);
+      addMessage(text, 'self');
+      input.value = '';
+      input.focus();
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function addMessage(text, from) {
+      const el = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg ' + from;
+      const now = new Date().toLocaleTimeString('zh', { hour:'2-digit', minute:'2-digit' });
+      div.innerHTML = `${escapeHtml(text)}<span class="msg-time">${now}</span>`;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function addSystemMsg(text) {
+      const el = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'system-msg';
+      div.textContent = text;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function copyMyId() {
+      if (!myId) return;
+      navigator.clipboard.writeText(myId).then(() => showToast());
+    }
+
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    // Init
+    initPeer();
+  </script>
+</body>
+</html>
