@@ -8,755 +8,638 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0a0a0f;
-      --surface: #12121a;
-      --border: #2a2a3a;
-      --accent: #00ff88;
-      --accent2: #ff3a6e;
-      --text: #e8e8f0;
-      --muted: #5a5a7a;
-      --msg-self: #0d2b1e;
-      --msg-peer: #1a1a2e;
-      --radius: 12px;
+      --bg: #0a0a0f; --surface: #12121a; --border: #2a2a3a;
+      --accent: #00ff88; --accent2: #ff3a6e; --text: #e8e8f0;
+      --muted: #5a5a7a; --msg-self: #0d2b1e; --msg-peer: #1a1a2e; --radius: 12px;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Syne', sans-serif;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif;
+      height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
     }
-
-    /* Noise texture overlay */
     body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 0;
     }
-
-    #app {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
+    #app { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; }
 
     /* ── Header ── */
     header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(10,10,15,0.8);
-      backdrop-filter: blur(12px);
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      background: rgba(10,10,15,0.85); backdrop-filter: blur(12px); flex-shrink: 0;
     }
-
-    .logo {
-      font-size: 1.1rem;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      color: var(--accent);
-      text-transform: uppercase;
-    }
-
+    .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; }
     .logo span { color: var(--accent2); }
-
+    .hdr-right { display: flex; align-items: center; gap: 10px; }
+    #wakelock-badge {
+      font-family: 'Space Mono', monospace; font-size: 0.6rem; display: none;
+      background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3);
+      color: var(--accent); padding: 2px 7px; border-radius: 10px;
+    }
+    #wakelock-badge.on { display: inline; }
     #status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--muted);
-      display: inline-block;
-      margin-right: 8px;
-      transition: background 0.3s;
-      box-shadow: 0 0 0 0 transparent;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+      display: inline-block; margin-right: 8px; transition: background 0.3s;
     }
-    #status-dot.connected {
-      background: var(--accent);
-      animation: pulse 2s infinite;
-    }
+    #status-dot.connected { background: var(--accent); animation: pulse 2s infinite; }
     #status-dot.connecting { background: #ffcc00; }
-
     @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(0,255,136,0.5); }
-      70%  { box-shadow: 0 0 0 8px rgba(0,255,136,0); }
-      100% { box-shadow: 0 0 0 0 rgba(0,255,136,0); }
+      0%  { box-shadow: 0 0 0 0 rgba(0,255,136,0.5); }
+      70% { box-shadow: 0 0 0 8px rgba(0,255,136,0); }
+      100%{ box-shadow: 0 0 0 0 rgba(0,255,136,0); }
     }
+    #status-text { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--muted); }
 
-    #status-text {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--muted);
-    }
-
-    /* ── Nickname Screen ── */
+    /* ── Nickname screen ── */
     #nickname-screen {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      gap: 28px;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px; gap: 28px;
     }
-
-    .big-title {
-      font-size: 2rem;
-      font-weight: 800;
-      text-align: center;
-      line-height: 1.15;
-    }
+    .big-title { font-size: 2rem; font-weight: 800; text-align: center; line-height: 1.15; }
     .big-title em { color: var(--accent); font-style: normal; }
-
     .nick-card {
-      width: 100%;
-      max-width: 340px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      width: 100%; max-width: 340px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; display: flex; flex-direction: column; gap: 16px;
     }
-
-    .nick-hint {
-      font-size: 0.8rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .nick-input-wrap {
-      position: relative;
-    }
-
+    .nick-hint { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+    .nick-wrap { position: relative; }
     #nickname-input {
-      width: 100%;
-      background: var(--bg);
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 46px 12px 14px;
-      color: var(--text);
-      font-family: 'Syne', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      outline: none;
-      transition: border-color 0.2s;
-      letter-spacing: 0.03em;
+      width: 100%; background: var(--bg); border: 2px solid var(--border); border-radius: 8px;
+      padding: 12px 46px 12px 14px; color: var(--text); font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 700; outline: none; transition: border-color 0.2s;
     }
     #nickname-input:focus { border-color: var(--accent); }
     #nickname-input::placeholder { color: var(--muted); font-weight: 400; }
-
     .nick-len {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--muted);
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted);
     }
+    .nick-error { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--accent2); min-height: 1em; }
 
-    .nick-error {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--accent2);
-      min-height: 1em;
-    }
-
-    /* ── Setup Panel ── */
+    /* ── Setup panel ── */
     #setup {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      gap: 24px;
-      display: none;
+      flex: 1; display: none; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px; gap: 24px;
     }
-
-    .setup-title {
-      font-size: 1.6rem;
-      font-weight: 800;
-      text-align: center;
-      line-height: 1.2;
-    }
-
-    .setup-title em {
-      color: var(--accent);
-      font-style: normal;
-    }
-
+    .setup-title { font-size: 1.6rem; font-weight: 800; text-align: center; line-height: 1.2; }
+    .setup-title em { color: var(--accent); font-style: normal; }
     .card {
-      width: 100%;
-      max-width: 360px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      width: 100%; max-width: 360px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; display: flex; flex-direction: column; gap: 14px;
     }
-
-    .card-label {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
+    .card-label { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
     .my-id-box {
-      background: #0d1f12;
-      border: 1px solid var(--accent);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-family: 'Space Mono', monospace;
-      font-size: 1.1rem;
-      color: var(--accent);
-      letter-spacing: 0.08em;
-      text-align: center;
-      cursor: pointer;
+      background: #0d1f12; border: 1px solid var(--accent); border-radius: 8px;
+      padding: 10px 14px; font-family: 'Space Mono', monospace; font-size: 1.1rem;
+      color: var(--accent); text-align: center; cursor: pointer; font-weight: 700;
       transition: background 0.2s;
-      word-break: break-all;
-      font-weight: 700;
     }
     .my-id-box:active { background: #0a2b16; }
-
-    .copy-hint {
-      font-size: 0.7rem;
-      color: var(--muted);
-      text-align: center;
-      font-family: 'Space Mono', monospace;
-    }
-
-    .id-conflict {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--accent2);
-      text-align: center;
-      display: none;
-    }
-
+    .copy-hint { font-size: 0.7rem; color: var(--muted); text-align: center; font-family: 'Space Mono', monospace; }
+    .id-conflict { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--accent2); text-align: center; display: none; }
     .divider {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 0.75rem;
-      font-family: 'Space Mono', monospace;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--muted); font-size: 0.75rem; font-family: 'Space Mono', monospace;
     }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     input[type="text"] {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: var(--text);
-      font-family: 'Space Mono', monospace;
-      font-size: 0.85rem;
-      outline: none;
-      transition: border-color 0.2s;
-      width: 100%;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; color: var(--text); font-family: 'Space Mono', monospace;
+      font-size: 0.85rem; outline: none; transition: border-color 0.2s; width: 100%;
     }
     input[type="text"]:focus { border-color: var(--accent); }
     input[type="text"]::placeholder { color: var(--muted); }
-
     button {
-      cursor: pointer;
-      border: none;
-      outline: none;
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      border-radius: 8px;
-      transition: transform 0.1s, opacity 0.2s;
+      cursor: pointer; border: none; outline: none; font-family: 'Syne', sans-serif;
+      font-weight: 700; border-radius: 8px; transition: transform 0.1s, opacity 0.2s;
     }
     button:active { transform: scale(0.97); }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #000;
-      padding: 10px 20px;
-      font-size: 0.9rem;
-      width: 100%;
-      letter-spacing: 0.05em;
-    }
+    .btn-primary { background: var(--accent); color: #000; padding: 10px 20px; font-size: 0.9rem; width: 100%; }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
     .incoming-banner {
-      background: #1a0a1e;
-      border: 1px solid var(--accent2);
-      border-radius: 8px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      background: #1a0a1e; border: 1px solid var(--accent2); border-radius: 8px;
+      padding: 12px 14px; flex-direction: column; gap: 8px;
     }
-    .incoming-text {
-      font-size: 0.85rem;
-      color: var(--accent2);
-      font-family: 'Space Mono', monospace;
-    }
-    .btn-accept {
-      background: var(--accent2);
-      color: #fff;
-      padding: 8px 16px;
-      font-size: 0.85rem;
-      width: 100%;
-    }
+    .incoming-text { font-size: 0.85rem; color: var(--accent2); font-family: 'Space Mono', monospace; }
+    .btn-accept { background: var(--accent2); color: #fff; padding: 8px 16px; font-size: 0.85rem; width: 100%; }
 
-    /* ── Chat Panel ── */
-    #chat {
-      display: none;
-      flex: 1;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
+    /* ── Chat ── */
+    #chat { display: none; flex: 1; flex-direction: column; overflow: hidden; }
     .peer-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-family: 'Space Mono', monospace;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+      border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);
+      font-family: 'Space Mono', monospace; flex-shrink: 0;
     }
     .peer-bar strong { color: var(--accent); font-size: 0.85rem; }
-
     #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      scroll-behavior: smooth;
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth;
     }
-
     #messages::-webkit-scrollbar { width: 4px; }
-    #messages::-webkit-scrollbar-track { background: transparent; }
     #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
     .msg {
-      max-width: 78%;
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      font-size: 0.9rem;
-      line-height: 1.5;
-      animation: fadeUp 0.2s ease;
-      word-break: break-word;
+      max-width: 80%; padding: 10px 14px; border-radius: var(--radius);
+      font-size: 0.9rem; line-height: 1.5; animation: fadeUp 0.2s ease; word-break: break-word;
     }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
+    @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
     .msg.self {
-      align-self: flex-end;
-      background: var(--msg-self);
-      border: 1px solid rgba(0,255,136,0.25);
-      border-bottom-right-radius: 4px;
+      align-self: flex-end; background: var(--msg-self);
+      border: 1px solid rgba(0,255,136,0.25); border-bottom-right-radius: 4px;
     }
-
     .msg.peer {
-      align-self: flex-start;
-      background: var(--msg-peer);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
+      align-self: flex-start; background: var(--msg-peer);
+      border: 1px solid var(--border); border-bottom-left-radius: 4px;
     }
-
-    .msg-time {
-      display: block;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.6rem;
-      color: var(--muted);
-      margin-top: 4px;
-      text-align: right;
-    }
-
-    .msg-name {
-      display: block;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.6rem;
-      color: var(--accent);
-      margin-bottom: 3px;
-      letter-spacing: 0.05em;
-    }
-
+    .msg-name { display: block; font-family: 'Space Mono', monospace; font-size: 0.6rem; margin-bottom: 3px; }
     .msg.self .msg-name { color: rgba(0,255,136,0.5); text-align: right; }
     .msg.peer .msg-name { color: var(--accent2); }
-
+    .msg-time { display: block; font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); margin-top: 4px; text-align: right; }
+    .msg.peer .msg-time { text-align: left; }
     .system-msg {
-      align-self: center;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--muted);
-      background: rgba(42,42,58,0.5);
-      padding: 4px 10px;
-      border-radius: 20px;
+      align-self: center; font-family: 'Space Mono', monospace; font-size: 0.65rem;
+      color: var(--muted); background: rgba(42,42,58,0.5); padding: 4px 10px; border-radius: 20px;
     }
 
-    /* ── Input Bar ── */
+    /* Image */
+    .msg-img {
+      display: block; max-width: 100%; max-height: 260px; border-radius: 8px;
+      cursor: pointer; margin-bottom: 4px; object-fit: contain;
+    }
+
+    /* File bubble */
+    .file-bubble {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; text-decoration: none; color: var(--text);
+      margin-bottom: 4px;
+    }
+    .file-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .file-info { display: flex; flex-direction: column; min-width: 0; }
+    .file-name { font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .file-size { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted); }
+
+    /* Progress */
+    .xfer-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .xfer-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.1s; width: 0%; }
+
+    /* Input bar */
     .input-bar {
-      display: flex;
-      gap: 10px;
-      padding: 12px 16px;
-      border-top: 1px solid var(--border);
-      background: rgba(10,10,15,0.8);
-      backdrop-filter: blur(12px);
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      border-top: 1px solid var(--border); background: rgba(10,10,15,0.9);
+      backdrop-filter: blur(12px); flex-shrink: 0;
     }
-
     #msg-input {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: var(--text);
-      font-family: 'Syne', sans-serif;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.2s;
+      flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; color: var(--text); font-family: 'Syne', sans-serif;
+      font-size: 0.9rem; outline: none; transition: border-color 0.2s;
     }
     #msg-input:focus { border-color: var(--accent); }
     #msg-input::placeholder { color: var(--muted); }
-
-    .btn-send {
-      background: var(--accent);
-      color: #000;
-      padding: 10px 18px;
-      font-size: 0.9rem;
-      flex-shrink: 0;
+    .btn-attach {
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+      padding: 10px 13px; font-size: 1.1rem; border-radius: 8px; flex-shrink: 0;
+      transition: color 0.2s, border-color 0.2s;
     }
-    .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-attach:hover, .btn-attach:focus { color: var(--accent); border-color: var(--accent); }
+    .btn-send { background: var(--accent); color: #000; padding: 10px 18px; font-size: 0.9rem; flex-shrink: 0; }
+    .btn-send:disabled, .btn-attach:disabled { opacity: 0.4; cursor: not-allowed; }
+    #file-input { display: none; }
 
-    /* ── Copied Toast ── */
+    /* Lightbox */
+    #lightbox {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.93); align-items: center; justify-content: center;
+    }
+    #lightbox.open { display: flex; }
+    #lb-img { max-width: 94vw; max-height: 90dvh; border-radius: 8px; object-fit: contain; }
+    #lb-close {
+      position: absolute; top: 16px; right: 20px; background: none; border: none;
+      color: #fff; font-size: 2.2rem; cursor: pointer; line-height: 1;
+    }
+
+    /* Toast */
     #toast {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--accent);
-      color: #000;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem;
-      font-weight: 700;
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      z-index: 99;
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--accent); color: #000; padding: 8px 20px; border-radius: 20px;
+      font-family: 'Space Mono', monospace; font-size: 0.75rem; font-weight: 700;
+      opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 99;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <div class="logo">P2P<span>CHAT</span></div>
-      <div style="display:flex;align-items:center">
-        <span id="status-dot"></span>
-        <span id="status-text">初始化中…</span>
-      </div>
-    </header>
-
-    <!-- Step 1: Nickname -->
-    <div id="nickname-screen">
-      <div class="big-title">设置你的<br/><em>昵称</em></div>
-      <div class="nick-card">
-        <div class="nick-hint">昵称即你的连接 ID，对方用它找到你。<br/>只能含字母、数字、横线，最长 20 字符。</div>
-        <div class="nick-input-wrap">
-          <input type="text" id="nickname-input" placeholder="例如: alice 或 phone-123"
-            maxlength="20" oninput="onNickInput()" onkeydown="nickKey(event)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
-          <span class="nick-len" id="nick-len">0/20</span>
-        </div>
-        <div class="nick-error" id="nick-error"></div>
-        <button class="btn-primary" id="nick-btn" onclick="confirmNickname()" disabled>确认昵称 →</button>
-      </div>
+<div id="app">
+  <header>
+    <div class="logo">P2P<span>CHAT</span></div>
+    <div class="hdr-right">
+      <span id="wakelock-badge">☀ 常亮</span>
+      <span id="status-dot"></span>
+      <span id="status-text">初始化中…</span>
     </div>
+  </header>
 
-    <!-- Step 2: Setup -->
-    <div id="setup">
-      <div class="setup-title">你好，<em id="my-nickname-display"></em></div>
-
-      <div class="card">
-        <div class="card-label">你的昵称 ID（点击复制）</div>
-        <div class="my-id-box" id="my-id" onclick="copyMyId()">…</div>
-        <div class="copy-hint">把这个昵称发给对方，让他来连你</div>
-        <div class="id-conflict" id="id-conflict">⚠ 该昵称已被占用，请换一个</div>
-
-        <div class="divider">或者</div>
-
-        <div class="card-label">输入对方的昵称主动连接</div>
-        <input type="text" id="peer-id-input" placeholder="对方的昵称" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
-        <button class="btn-primary" id="connect-btn" onclick="connectToPeer()" disabled>连接</button>
-
-        <div class="incoming-banner" id="incoming-banner" style="display:none">
-          <div class="incoming-text" id="incoming-text"></div>
-          <button class="btn-accept" onclick="acceptIncoming()">✓ 接受连接</button>
-        </div>
+  <!-- 1. Nickname -->
+  <div id="nickname-screen">
+    <div class="big-title">设置你的<br/><em>昵称</em></div>
+    <div class="nick-card">
+      <div class="nick-hint">昵称即你的连接 ID，对方用它找到你。<br/>只能含字母、数字、横线，最长 20 字符。</div>
+      <div class="nick-wrap">
+        <input type="text" id="nickname-input" placeholder="例如: alice 或 phone-123"
+          maxlength="20" oninput="onNickInput()" onkeydown="nickKey(event)"
+          autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+        <span class="nick-len" id="nick-len">0/20</span>
       </div>
+      <div class="nick-error" id="nick-error"></div>
+      <button class="btn-primary" id="nick-btn" onclick="confirmNickname()" disabled>确认昵称 →</button>
     </div>
+  </div>
 
-    <!-- Chat -->
-    <div id="chat">
-      <div class="peer-bar">
-        已连接 → <strong id="peer-label"></strong>
-      </div>
-      <div id="messages"></div>
-      <div class="input-bar">
-        <input type="text" id="msg-input" placeholder="输入消息…" onkeydown="handleKey(event)" />
-        <button class="btn-send" id="send-btn" onclick="sendMessage()">发送</button>
+  <!-- 2. Setup -->
+  <div id="setup">
+    <div class="setup-title">你好，<em id="my-nick-disp"></em></div>
+    <div class="card">
+      <div class="card-label">你的昵称 ID（点击复制）</div>
+      <div class="my-id-box" id="my-id" onclick="copyMyId()">…</div>
+      <div class="copy-hint">把这个昵称发给对方，让他来连你</div>
+      <div class="id-conflict" id="id-conflict">⚠ 该昵称已被占用，请换一个</div>
+      <div class="divider">或者</div>
+      <div class="card-label">输入对方的昵称主动连接</div>
+      <input type="text" id="peer-id-input" placeholder="对方的昵称"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+      <button class="btn-primary" id="connect-btn" onclick="connectToPeer()" disabled>连接</button>
+      <div class="incoming-banner" id="incoming-banner" style="display:none">
+        <div class="incoming-text" id="incoming-text"></div>
+        <button class="btn-accept" onclick="acceptIncoming()">✓ 接受连接</button>
       </div>
     </div>
   </div>
 
-  <div id="toast">已复制！</div>
+  <!-- 3. Chat -->
+  <div id="chat">
+    <div class="peer-bar">已连接 → <strong id="peer-label"></strong></div>
+    <div id="messages"></div>
+    <div class="input-bar">
+      <button class="btn-attach" id="attach-btn" title="发送文件/图片" disabled
+        onclick="document.getElementById('file-input').click()">📎</button>
+      <input type="file" id="file-input" accept="*/*" onchange="handleFileSelect(event)" />
+      <input type="text" id="msg-input" placeholder="输入消息…" onkeydown="handleKey(event)" />
+      <button class="btn-send" id="send-btn" onclick="sendMessage()">发送</button>
+    </div>
+  </div>
+</div>
 
-  <script>
-    let peer, conn, myId, myNickname, pendingConn;
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lb-close" onclick="closeLightbox()">×</button>
+  <img id="lb-img" src="" alt="" onclick="event.stopPropagation()" />
+</div>
 
-    /* ── Nickname step ── */
-    function onNickInput() {
-      const inp = document.getElementById('nickname-input');
-      const val = inp.value;
-      document.getElementById('nick-len').textContent = val.length + '/20';
-      const err = document.getElementById('nick-error');
-      const btn = document.getElementById('nick-btn');
-      if (val.length === 0) { err.textContent = ''; btn.disabled = true; return; }
-      if (!/^[a-zA-Z0-9\-]+$/.test(val)) {
-        err.textContent = '只能用字母、数字、横线（-）';
-        btn.disabled = true;
-      } else {
-        err.textContent = '';
-        btn.disabled = false;
-      }
-    }
+<div id="toast"></div>
 
-    function nickKey(e) {
-      if (e.key === 'Enter') { e.preventDefault(); confirmNickname(); }
-    }
+<script>
+  let peer, conn, myId, pendingConn;
+  let wakeLock = null;
 
-    function confirmNickname() {
-      const val = document.getElementById('nickname-input').value.trim();
-      if (!val || !/^[a-zA-Z0-9\-]+$/.test(val)) return;
-      myNickname = val;
-      document.getElementById('nick-btn').disabled = true;
-      document.getElementById('nick-btn').textContent = '连接中…';
-      initPeer(myNickname);
-    }
-
-    /* ── PeerJS ── */
-    function setStatus(state, text) {
-      const dot = document.getElementById('status-dot');
-      const txt = document.getElementById('status-text');
-      dot.className = state;
-      txt.textContent = text;
-    }
-
-    function initPeer(id) {
-      peer = new Peer(id, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-          ]
-        }
+  /* ══ Wake Lock ══ */
+  async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      if (wakeLock) return;                       // already held
+      wakeLock = await navigator.wakeLock.request('screen');
+      document.getElementById('wakelock-badge').classList.add('on');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+        document.getElementById('wakelock-badge').classList.remove('on');
       });
+    } catch(e) { console.warn('WakeLock denied:', e.message); }
+  }
 
-      setStatus('connecting', '注册昵称中…');
+  // iOS/Android releases the lock when app goes to background; re-acquire on return
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && conn && conn.open) acquireWakeLock();
+  });
 
-      peer.on('open', registeredId => {
-        myId = registeredId;
-        // Show setup screen
-        document.getElementById('nickname-screen').style.display = 'none';
-        const setup = document.getElementById('setup');
-        setup.style.display = 'flex';
-        document.getElementById('my-nickname-display').textContent = myId;
-        document.getElementById('my-id').textContent = myId;
-        document.getElementById('connect-btn').disabled = false;
-        setStatus('', '等待连接');
-      });
+  /* ══ Nickname ══ */
+  function onNickInput() {
+    const v = document.getElementById('nickname-input').value;
+    document.getElementById('nick-len').textContent = v.length + '/20';
+    const ok = v.length > 0 && /^[a-zA-Z0-9\-]+$/.test(v);
+    document.getElementById('nick-error').textContent = (!ok && v) ? '只能用字母、数字、横线（-）' : '';
+    document.getElementById('nick-btn').disabled = !ok;
+  }
 
-      peer.on('connection', c => {
-        // 立即缓存数据，防止 accept 之前消息丢失
-        pendingConn = c;
-        const banner = document.getElementById('incoming-banner');
-        document.getElementById('incoming-text').textContent = `📲 来自「${c.peer}」的连接请求`;
-        banner.style.display = 'flex';
-        banner.style.flexDirection = 'column';
-        // 自动接受（无需手动点击也能建立通道），UI 上仍显示横幅让用户确认
-        // 注意：不在这里 showChat，等用户点接受
-      });
+  function nickKey(e) { if (e.key === 'Enter') { e.preventDefault(); confirmNickname(); } }
 
-      peer.on('error', err => {
-        if (err.type === 'unavailable-id') {
-          // Nickname taken
-          document.getElementById('nick-btn').disabled = false;
-          document.getElementById('nick-btn').textContent = '确认昵称 →';
-          // If already on setup screen, show conflict there
-          if (document.getElementById('setup').style.display !== 'none') {
-            document.getElementById('id-conflict').style.display = 'block';
-            document.getElementById('connect-btn').disabled = true;
-          } else {
-            document.getElementById('nick-error').textContent = '⚠ 该昵称已被占用，请换一个';
-          }
-          setStatus('', '昵称冲突');
-          peer.destroy();
-        } else {
-          setStatus('', '错误: ' + err.type);
-          console.error(err);
-        }
-      });
-    }
+  function confirmNickname() {
+    const v = document.getElementById('nickname-input').value.trim();
+    if (!v || !/^[a-zA-Z0-9\-]+$/.test(v)) return;
+    document.getElementById('nick-btn').disabled = true;
+    document.getElementById('nick-btn').textContent = '连接中…';
+    initPeer(v);
+  }
 
-    function acceptIncoming() {
-      if (!pendingConn) return;
-      const c = pendingConn;
-      pendingConn = null;
-      document.getElementById('incoming-banner').style.display = 'none';
-      activateConn(c);
-    }
+  /* ══ PeerJS ══ */
+  function setStatus(cls, txt) {
+    document.getElementById('status-dot').className = cls;
+    document.getElementById('status-text').textContent = txt;
+  }
 
-    function connectToPeer() {
-      const peerId = document.getElementById('peer-id-input').value.trim();
-      if (!peerId || !peer) return;
-      if (peerId === myId) { alert('不能连接自己'); return; }
-      setStatus('connecting', '连接中…');
-      document.getElementById('connect-btn').disabled = true;
-      activateConn(peer.connect(peerId, { reliable: true }));
-    }
+  function initPeer(id) {
+    peer = new Peer(id, {
+      host: '0.peerjs.com', port: 443, path: '/', secure: true,
+      config: { iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+      ]}
+    });
+    setStatus('connecting', '注册昵称中…');
 
-    function activateConn(c) {
-      if (conn) { try { conn.close(); } catch(_){} }
-      conn = c;
-
-      function onOpen() {
-        setStatus('connected', '已连接');
-        document.getElementById('peer-label').textContent = conn.peer;
-        showChat();
-        addSystemMsg(`已与「${conn.peer}」建立连接 🎉`);
-      }
-
-      // 被动方接受时 open 事件可能已触发，直接检查
-      if (c.open) {
-        onOpen();
-      } else {
-        conn.on('open', onOpen);
-      }
-
-      conn.on('data', raw => {
-        let text, from;
-        if (typeof raw === 'string') {
-          text = raw; from = conn.peer;
-        } else {
-          text = (raw && raw.text) ? raw.text : String(raw);
-          from = (raw && raw.from) ? raw.from : conn.peer;
-        }
-        addMessage(text, 'peer', from);
-      });
-
-      conn.on('close', () => {
-        setStatus('', '连接已断开');
-        addSystemMsg('对方已断开连接');
-        document.getElementById('send-btn').disabled = true;
-        document.getElementById('msg-input').disabled = true;
-        conn = null;
-      });
-
-      conn.on('error', err => {
-        console.error(err);
-        setStatus('', '连接出错');
-        addSystemMsg('连接错误: ' + (err.message || err));
-      });
-    }
-
-    function showChat() {
-      document.getElementById('setup').style.display = 'none';
+    peer.on('open', rid => {
+      myId = rid;
       document.getElementById('nickname-screen').style.display = 'none';
-      const chatEl = document.getElementById('chat');
-      chatEl.style.display = 'flex';
+      document.getElementById('setup').style.display = 'flex';
+      document.getElementById('my-nick-disp').textContent = myId;
+      document.getElementById('my-id').textContent = myId;
+      document.getElementById('connect-btn').disabled = false;
+      setStatus('', '等待连接');
+    });
+
+    peer.on('connection', c => {
+      pendingConn = c;
+      document.getElementById('incoming-text').textContent = `📲 来自「${c.peer}」的连接请求`;
+      const b = document.getElementById('incoming-banner');
+      b.style.display = 'flex'; b.style.flexDirection = 'column';
+    });
+
+    peer.on('error', err => {
+      if (err.type === 'unavailable-id') {
+        document.getElementById('nick-btn').disabled = false;
+        document.getElementById('nick-btn').textContent = '确认昵称 →';
+        document.getElementById('nick-error').textContent = '⚠ 该昵称已被占用，请换一个';
+        setStatus('', '昵称冲突'); peer.destroy();
+      } else { setStatus('', '错误: ' + err.type); console.error(err); }
+    });
+  }
+
+  function acceptIncoming() {
+    if (!pendingConn) return;
+    const c = pendingConn; pendingConn = null;
+    document.getElementById('incoming-banner').style.display = 'none';
+    activateConn(c);
+  }
+
+  function connectToPeer() {
+    const pid = document.getElementById('peer-id-input').value.trim();
+    if (!pid || !peer) return;
+    if (pid === myId) { alert('不能连接自己'); return; }
+    setStatus('connecting', '连接中…');
+    document.getElementById('connect-btn').disabled = true;
+    activateConn(peer.connect(pid, { reliable: true }));
+  }
+
+  function activateConn(c) {
+    if (conn) { try { conn.close(); } catch(_){} }
+    conn = c;
+
+    function onOpen() {
+      setStatus('connected', '已连接');
+      document.getElementById('peer-label').textContent = conn.peer;
+      document.getElementById('attach-btn').disabled = false;
+      showChat();
+      addSystemMsg(`已与「${conn.peer}」建立连接 🎉`);
+      acquireWakeLock();
     }
 
-    function sendMessage() {
-      const input = document.getElementById('msg-input');
-      const text = input.value.trim();
-      if (!text || !conn || !conn.open) return;
-      conn.send(text);          // 只发纯字符串，最可靠
-      addMessage(text, 'self', myId);
-      input.value = '';
-      input.focus();
+    if (c.open) { onOpen(); } else { conn.on('open', onOpen); }
+
+    conn.on('data', raw => handleIncoming(raw));
+
+    conn.on('close', () => {
+      setStatus('', '连接已断开');
+      addSystemMsg('对方已断开连接');
+      ['send-btn','attach-btn'].forEach(id => document.getElementById(id).disabled = true);
+      document.getElementById('msg-input').disabled = true;
+      conn = null;
+      if (wakeLock) { wakeLock.release(); }
+    });
+
+    conn.on('error', err => {
+      setStatus('', '连接出错');
+      addSystemMsg('连接错误: ' + (err.message || err));
+      console.error(err);
+    });
+  }
+
+  /* ══ Incoming data ══ */
+  const inChunks = {};   // transferId → { name, size, mime, chunks[], received }
+
+  function handleIncoming(raw) {
+    if (typeof raw === 'string') { addTextMsg(raw, 'peer', conn.peer); return; }
+
+    if (raw.type === 'text') {
+      addTextMsg(raw.text, 'peer', raw.from || conn.peer);
+
+    } else if (raw.type === 'file-meta') {
+      inChunks[raw.id] = { name: raw.name, size: raw.size, mime: raw.mime || '', chunks: [], received: 0 };
+      addFilePlaceholder(raw.id, raw.name, raw.size, 'peer', raw.from || conn.peer);
+
+    } else if (raw.type === 'file-chunk') {
+      const t = inChunks[raw.id]; if (!t) return;
+      t.chunks.push(raw.data);
+      t.received += raw.data.byteLength;
+      setProgress(raw.id, t.received / t.size);
+
+    } else if (raw.type === 'file-end') {
+      const t = inChunks[raw.id]; if (!t) return;
+      finalizeFile(raw.id, new Blob(t.chunks, { type: t.mime }), t.name, t.mime);
+      delete inChunks[raw.id];
+    }
+  }
+
+  /* ══ File sending ══ */
+  const CHUNK = 64 * 1024;  // 64 KB
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    if (!conn || !conn.open) { showToast('未连接'); return; }
+    sendFile(file);
+  }
+
+  async function sendFile(file) {
+    const id = Math.random().toString(36).slice(2);
+    conn.send({ type: 'file-meta', id, name: file.name, size: file.size, mime: file.type, from: myId });
+
+    // Local preview
+    if (file.type.startsWith('image/')) {
+      addImageMsg(id, URL.createObjectURL(file), file.name, 'self', myId);
+    } else {
+      addFilePlaceholder(id, file.name, file.size, 'self', myId);
     }
 
-    function handleKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
+    // Chunk & send
+    const buf = await file.arrayBuffer();
+    let offset = 0;
+    while (offset < buf.byteLength) {
+      conn.send({ type: 'file-chunk', id, data: buf.slice(offset, offset + CHUNK) });
+      offset += CHUNK;
+      setProgress(id, Math.min(offset, buf.byteLength) / buf.byteLength);
+      await new Promise(r => setTimeout(r, 0));  // yield
+    }
+    conn.send({ type: 'file-end', id, from: myId });
+    setProgress(id, 1);
+  }
+
+  /* ══ Message rendering ══ */
+  function ts() { return new Date().toLocaleTimeString('zh', { hour:'2-digit', minute:'2-digit' }); }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+  function fileIcon(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    if (['jpg','jpeg','png','gif','webp','bmp','svg','heic'].includes(ext)) return '🖼️';
+    if (['mp4','mov','avi','mkv','webm'].includes(ext)) return '🎬';
+    if (['mp3','aac','wav','flac','ogg','m4a'].includes(ext)) return '🎵';
+    if (ext === 'pdf') return '📄';
+    if (['zip','rar','7z','tar','gz'].includes(ext)) return '🗜️';
+    if (['doc','docx'].includes(ext)) return '📝';
+    if (['xls','xlsx'].includes(ext)) return '📊';
+    if (['ppt','pptx'].includes(ext)) return '📑';
+    return '📁';
+  }
+
+  function msgWrap(side, name) {
+    const d = document.createElement('div');
+    d.className = 'msg ' + side;
+    d.innerHTML = `<span class="msg-name">${esc(name)}</span>`;
+    return d;
+  }
+
+  function addTextMsg(text, side, name) {
+    const el = document.getElementById('messages');
+    const d = msgWrap(side, name);
+    d.innerHTML += esc(text) + `<span class="msg-time">${ts()}</span>`;
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
+  }
+
+  function addImageMsg(id, url, name, side, senderName) {
+    const el = document.getElementById('messages');
+    const d = msgWrap(side, senderName);
+    d.id = 'msg-' + id;
+
+    const img = document.createElement('img');
+    img.className = 'msg-img'; img.src = url; img.alt = name;
+    img.onclick = () => openLightbox(url);
+    d.appendChild(img);
+
+    d.innerHTML += progressHTML(id) + `<span class="msg-time">${ts()}</span>`;
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
+  }
+
+  function addFilePlaceholder(id, name, size, side, senderName) {
+    const el = document.getElementById('messages');
+    const d = msgWrap(side, senderName);
+    d.id = 'msg-' + id;
+    d.innerHTML += `
+      <div class="file-bubble" id="fb-${id}">
+        <span class="file-icon">${fileIcon(name)}</span>
+        <div class="file-info">
+          <span class="file-name">${esc(name)}</span>
+          <span class="file-size" id="fs-${id}">${fmtSize(size)}</span>
+        </div>
+      </div>` + progressHTML(id) + `<span class="msg-time">${ts()}</span>`;
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
+  }
+
+  function progressHTML(id) {
+    return `<div class="xfer-bar"><div class="xfer-fill" id="prog-${id}"></div></div>`;
+  }
+
+  function setProgress(id, ratio) {
+    const bar = document.getElementById('prog-' + id);
+    if (bar) bar.style.width = Math.round(ratio * 100) + '%';
+  }
+
+  function finalizeFile(id, blob, name, mime) {
+    const url = URL.createObjectURL(blob);
+    const isImg = mime && mime.startsWith('image/');
+    const msgDiv = document.getElementById('msg-' + id);
+    if (!msgDiv) return;
+
+    if (isImg) {
+      const fb = document.getElementById('fb-' + id);
+      const img = document.createElement('img');
+      img.className = 'msg-img'; img.src = url; img.alt = name;
+      img.onclick = () => openLightbox(url);
+      if (fb) fb.replaceWith(img);
+    } else {
+      const fb = document.getElementById('fb-' + id);
+      if (fb) {
+        fb.href = url; fb.download = name;
+        const fsEl = document.getElementById('fs-' + id);
+        if (fsEl) fsEl.textContent = fmtSize(blob.size) + ' · 点击下载';
       }
     }
 
-    function addMessage(text, from, name) {
-      const el = document.getElementById('messages');
-      const div = document.createElement('div');
-      div.className = 'msg ' + from;
-      const now = new Date().toLocaleTimeString('zh', { hour:'2-digit', minute:'2-digit' });
-      const nameTag = `<span class="msg-name">${escapeHtml(name || '')}</span>`;
-      div.innerHTML = `${nameTag}${escapeHtml(text)}<span class="msg-time">${now}</span>`;
-      el.appendChild(div);
-      el.scrollTop = el.scrollHeight;
-    }
+    const bar = msgDiv.querySelector('.xfer-bar');
+    if (bar) bar.style.display = 'none';
+    document.getElementById('messages').scrollTop = 99999;
+  }
 
-    function addSystemMsg(text) {
-      const el = document.getElementById('messages');
-      const div = document.createElement('div');
-      div.className = 'system-msg';
-      div.textContent = text;
-      el.appendChild(div);
-      el.scrollTop = el.scrollHeight;
-    }
+  function addSystemMsg(text) {
+    const el = document.getElementById('messages');
+    const d = document.createElement('div');
+    d.className = 'system-msg'; d.textContent = text;
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
+  }
 
-    function escapeHtml(str) {
-      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
+  /* ══ Text sending ══ */
+  function sendMessage() {
+    const inp = document.getElementById('msg-input');
+    const text = inp.value.trim();
+    if (!text || !conn || !conn.open) return;
+    conn.send({ type: 'text', text, from: myId });
+    addTextMsg(text, 'self', myId);
+    inp.value = ''; inp.focus();
+  }
 
-    function copyMyId() {
-      if (!myId) return;
-      navigator.clipboard.writeText(myId).then(() => showToast());
-    }
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
 
-    function showToast() {
-      const t = document.getElementById('toast');
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 1800);
-    }
-  </script>
+  /* ══ UI ══ */
+  function showChat() {
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('nickname-screen').style.display = 'none';
+    document.getElementById('chat').style.display = 'flex';
+  }
+
+  function copyMyId() {
+    if (!myId) return;
+    navigator.clipboard.writeText(myId).then(() => showToast('已复制！'));
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function openLightbox(url) {
+    document.getElementById('lb-img').src = url;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lb-img').src = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
 </body>
 </html>
