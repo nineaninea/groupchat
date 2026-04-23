@@ -581,9 +581,18 @@
     } else {
       const fb = document.getElementById('fb-' + id);
       if (fb) {
-        fb.href = url; fb.download = name;
-        const fsEl = document.getElementById('fs-' + id);
-        if (fsEl) fsEl.textContent = fmtSize(blob.size) + ' · 点击下载';
+        // 必须换成真正的 <a> 标签才能触发下载
+        const a = document.createElement('a');
+        a.className = 'file-bubble';
+        a.href = url;
+        a.download = name;
+        a.innerHTML = `
+          <span class="file-icon">${fileIcon(name)}</span>
+          <div class="file-info">
+            <span class="file-name">${esc(name)}</span>
+            <span class="file-size">↓ ${fmtSize(blob.size)} · 点击下载</span>
+          </div>`;
+        fb.replaceWith(a);
       }
     }
 
